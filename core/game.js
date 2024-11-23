@@ -69,4 +69,9 @@ export default class Wordle {
     reset(word) {
         this.initialize(word)
     }
+
+    clone(dictionary) {
+        const { word, guessedWords, guesses, maxGuesses, finished, won } = this
+        const game = new Wordle({ word, dictionary })
+    }
 }

@@ -1,53 +1,58 @@
-const start =+new Date()
-import dictionary from './words/dictionary.js'
-import shitDictionary from './dump/shitDictionary.js'
-import Wordle from './core/game.js'
-import Player from './core/player.js'
-import fs from 'fs'
-import { lettersByPopularity, topWordsByScore } from './utils/stats.js'
-import { byWordScore } from './utils/sort.js'
-import common from './words/common.js'
+import Wordle from 'core/Game'
+import Player from 'core/Player'
 
-const map = {}
+import common from 'words/common'
+import dictionary from 'words/dictionary'
 
-const game = new Wordle({ dictionary:common })
-const player = new Player({ dictionary, game })
-function playFullGame() {
+import $ from 'jquery'
+
+document.addEventListener('DOMContentLoaded', init)
+const player = new Player({ dictionary, sort: true })
+let history, word, score, future;
+
+function init() {
+    $('#done').on('click', () => calculate())
+    $('#reset').on('click', () => reset())
+    $('#choose').on('click', () => chooseWord())
+    history = $('#history')
+    word = $('#wordle')
+    score = $('#score')
+    future = $('#future')
+}
+
+function calculate() {
+    const { word, score } = getParams()
+    player.forceGuess(word)
+    player.processScore(score)
+    player.updateWordList()
+
+    updateText(word)
+}
+
+function getParams() {
+    const word = $('#wordle').val().toLowerCase()
+    const score = $('#score').val().split('').map(str => parseInt(str))
+    return { word, score }
+}
+
+function updateText(newWord) {
+    const current = history.text()
+    history.text(current + '  ' + newWord)
+    future.text(player.wordList.join(','))
+    word.val('')
+    score.val('')
+    word.focus()
+}
+
+function reset() {
     player.reset()
-    game.reset()
-    while (!game.finished) {
-        player.makeGuess()
-    }
-
-    return { won: game.won, guesses: Array.from(player.guessed), word: game.targetWord }
+    history.text('')
+    future.text('')
+    word.focus()
 }
 
-let N = 10000
-let w = 0
-let g = 0
-const results = []
-for (let i = 0; i < N; i++) {
-    const result = playFullGame()
-    if (result.won) {
-        w++
-        g+= result.guesses.length
-    }
-    results.push(result) 
+function chooseWord() {
+    const guess = player.chooseWord()
+    word.val(guess)
 }
 
-
-console.log(`N: ${N}`)
-console.log(`time: ${+new Date() - start}ms`)
-console.log(`wins: ${(w*100)/N}`)
-console.log(`avg guess: ${g/w}`)
-
-
-
-//  Result from 1M random games
-//  64% win, 95 minutes, 3.184891 avg 
-//
-
-//  100K using shitdictionary
-//  time: 220479ms
-//  wins: 36.711
-//  avg guess: 2.03654
