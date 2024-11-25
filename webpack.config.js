@@ -2,10 +2,13 @@
 const path = require('path')
 
 module.exports = {
-  entry: './index.js',
+  entry: {
+    solver: './solver.js',
+    wordle: './wordle.js'
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js',
+    filename: '[name].js',
   },
   resolve: {
     modules: ['node_modules','./']

@@ -1,4 +1,5 @@
-dist/
+# dist/
 dump/
 node_modules/
 sandbox.js
+benchmark notes

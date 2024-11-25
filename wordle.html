@@ -1,0 +1,69 @@
+<html>
+    <head>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js'></script>
+        <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+        <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+        <script src="dist/wordle.js"></script>
+        <link rel="stylesheet" type="text/css" href="wordle.css">
+    </head>
+
+    <body>
+        <div class="main">
+            <p id="history"></p>
+            <div class="wordle"><input id="i-0" class="letter" maxlength="1"><input id="i-1" class="letter" maxlength="1"><input id="i-2" class="letter" maxlength="1"><input id="i-3" class="letter" maxlength="1"><input id="i-4" class="letter" maxlength="1"></div>
+            <div id="keyboard">
+                <div class="keyboard-row">
+                    <button id="q" class="key">Q</button>
+                    <button id="w" class="key">W</button>
+                    <button id="e" class="key">E</button>
+                    <button id="r" class="key">R</button>
+                    <button id="t" class="key">T</button>
+                    <button id="y" class="key">Y</button>
+                    <button id="u" class="key">U</button>
+                    <button id="i" class="key">I</button>
+                    <button id="o" class="key">O</button>
+                    <button id="p" class="key">P</button>
+                </div>
+                <div class="keyboard-row">
+                    <button id="a" class="key">A</button>
+                    <button id="s" class="key">S</button>
+                    <button id="d" class="key">D</button>
+                    <button id="f" class="key">F</button>
+                    <button id="g" class="key">G</button>
+                    <button id="h" class="key">H</button>
+                    <button id="j" class="key">J</button>
+                    <button id="k" class="key">K</button>
+                    <button id="l" class="key">L</button>
+                </div>
+                <div class="keyboard-row">
+                    <button id="submit" class="key submit">ENTER</button>
+                    <button id="z" class="key">Z</button>
+                    <button id="x" class="key">X</button>
+                    <button id="c" class="key">C</button>
+                    <button id="v" class="key">V</button>
+                    <button id="b" class="key">B</button>
+                    <button id="n" class="key">N</button>
+                    <button id="m" class="key">M</button>
+                    <button id="backspace" class="key backspace">&lt;</button>
+                </div>
+                <p id="solution"></p>
+                <div class="buttons">
+                    <button id="reset">Reset</button>
+                </div>
+                <div id="error"></div>
+            </div>
+        </div>
+    </body>
+
+    <style>
+        .main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+        #done, #paste {
+            margin-right: 5px;
+        }
+    </style>
+</html>

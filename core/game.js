@@ -1,3 +1,6 @@
+import all from "../words/all.js"
+const masterList = new Set([...all])
+
 export default class Wordle {
     constructor({ word, dictionary } = {}) {
         this.dictionary = dictionary
@@ -19,9 +22,10 @@ export default class Wordle {
 
     playWord(word) {
         word = word.trim().toLowerCase()
-        if (word.length !== this.targetWord.length) return console.log('')
-        if (this.guesses >= this.maxGuesses) return console.log('No more guesses remaining.')
-        if (this.guessedWords.has(word)) return console.log('Cannot guess the same word twice.')
+        if (!masterList.has(word)) throw new Error('Invalid word')
+        if (word.length !== this.targetWord.length) throw new Error('')
+        if (this.guesses >= this.maxGuesses) throw new Error('No more guesses remaining')
+        if (this.guessedWords.has(word)) throw new Error('Cannot guess the same word twice')
         this.guessedWords.add(word)
         this.guesses++
 
@@ -36,16 +40,20 @@ export default class Wordle {
     getScore(word) {
         word = word.trim().toLowerCase()
         const score = []
-        const counts = {}
+        const correctCounts = {}
         for (let i = 0; i < word.length; i++) {
-            const list = this.wordMap[word[i]]
-            if (!list || counts[word[i]] === list.length) {
+            const letter = word[i]
+            correctCounts[letter] = correctCounts[letter] || 0
+            const list = this.wordMap[letter]
+            if (!list || correctCounts[letter] === list.length) {
                 score.push(0)
             } else if (list.includes(i)) {
                 score.push(2)
-                counts[word[i]] = counts[word[i]] ? counts[word[i]] + 1 : 1;
-            } else {
+                correctCounts[letter]++
+            } else if (list && list.some(idx=>word[idx]!==letter) && correctCounts[letter] < list.length) {
                 score.push(1)
+            } else {
+                score.push(0)
             }
         }
 

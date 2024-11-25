@@ -1,18 +1,22 @@
 import Wordle from './Game.js'
-import { byWordScore } from '../utils/sort.js'
-import { topWordsByScore } from '../utils/stats.js'
+import { buildWordValueMap } from '../utils/dictionary.js'
 
 const ns = (from) => new Set(from)
 
+const DEFAULT_STARTING_WORDS = []
+
 export default class Player {
-    constructor({ dictionary, firstWord, sort } = {}) {
-        this.dictionary = sort ? dictionary.sort(byWordScore) : dictionary
-        this.initialize(firstWord)
+    constructor({ dictionary, firstWord, startingWords } = {}) {
+        const map = buildWordValueMap(dictionary)
+        const byWordScore = (a,b) => map[b] - map[a]
+        this.dictionary = dictionary.sort(byWordScore)
+        this.initialize(firstWord, startingWords)
     }
 
-    initialize(firstWord) {
-        this.wordList = this.dictionary
+    initialize(firstWord, startingWords) {
+        this.wordList = [...this.dictionary]
         this.firstWord = firstWord
+        this.startingWords = startingWords || DEFAULT_STARTING_WORDS
         this.guessed = ns()
         this.includes = ns()
         this.excludes = ns()
@@ -22,18 +26,16 @@ export default class Player {
     }
 
     getGuess() {
-        if (this.guessed.size === 0) return this.forceGuess('salet')
-        if (this.guessed.size === 1) return this.forceGuess('brond')
-            
+        if (this.guessed.size < this.startingWords.length)
+            return this.startingWords[this.guessed.size]
+
         this.wordList = this.getMatches()
         const word = this.chooseWord()
-        
-        this.guessed.add(word)
-        this.guess = word
+
         return word
     }
 
-    forceGuess(word) {
+    makeGuess(word) {
         this.guessed.add(word)
         this.guess = word
         return word
@@ -46,7 +48,7 @@ export default class Player {
                 this.knowns[idx] = letter
                 this.includes.delete(letter)
             }
-            if (value === 1)
+            if (value === 1) // NEEDS WORK!! SHOULD NOT BE ADDING LETTER BACK TO INCLUDES IN ALL CASES
                 this.includes.add(letter)
                 this.excludesByIndex[idx].add(letter)
 
@@ -87,33 +89,30 @@ export default class Player {
         return this.knowns[i] !== null
     }
 
-
-    // get score of word guessing at otherWord
-    // clone the includes/excludes temporarily
-    // process the score into the new sets.
-    // re-calculate wordList using updated rules
     chooseWord() {
-        if (this.guessed.size === 0) return this.chooseFirstWord()
-
+        if (this.guessed.size === 0) return this.getRandomTopWord()
         if (this.wordList.length > 300) return this.wordList[0]
-        
+        if (this.wordList.length === 0) return this.dictionary[Math.floor(Math.random() * this.dictionary.length)]
+
+        const values = buildWordValueMap(this.wordList)
+        const byValue = (a,b) => values[b] - values[a]
+        this.wordList = this.wordList.sort(byValue)
+
         let min = +Infinity
         let bestWord
         const map = {}
         for (const word of this.wordList) {
-            // word is the pick being simulated against all other remaining words
             map[word] = 0
             for (const otherWord of this.wordList) {
                 if (word === otherWord) continue
                 const game = new Wordle({ word: otherWord, dictionary: this.wordList })
                 const player = this.clone()
                 const score = game.playWord(word)
-                player.forceGuess(word)
+                player.makeGuess(word)
                 player.processScore(score)
                 const matches = player.getMatches()
                 map[word] += matches.length
             }
-            if (map[word] < (this.wordList.length / 2)) return word
             if (map[word] < min) {
                 min = map[word]
                 bestWord = word
@@ -123,19 +122,22 @@ export default class Player {
         return bestWord || this.wordList[0]
     }
 
-    chooseFirstWord() {
-        if (this.firstWord) return this.firstWord
-        const random = Math.floor(Math.random() * topWordsByScore.length)
-        return topWordsByScore[random]
+
+    getRandomTopWord() {
+        const i = Math.floor(Math.random()*100)
+        return this.wordList[i]
     }
 
     reset() {
-        this.initialize()
+        const { firstWord, startingWords } = this
+        this.initialize(firstWord, startingWords)
     }
 
     clone() {
-        const { firstWord, wordList, guessed, includes, excludes, excludesByIndex, knowns } = this
-        const player = new Player({ dictionary: wordList, firstWord })
+        const { dictionary, firstWord, wordList, guessed, includes, excludes, excludesByIndex, knowns } = this
+        const player = new Player({ dictionary: [], firstWord })
+        player.dictionary = dictionary // this could be dangerous some day but it saves a lot of time
+        player.wordList = [...wordList]
         player.guessed = ns(guessed)
         player.includes = ns(includes)
         player.excludes = ns(excludes)

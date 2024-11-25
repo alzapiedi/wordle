@@ -1,0 +1,45 @@
+<html>
+    <head>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js'></script>
+        <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+        <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+        <script src="dist/solver.js"></script>
+        <link rel="stylesheet" type="text/css" href="wordle.css">
+    </head>
+
+    <body>
+
+        <div class="main">
+            <p id="history"></p>
+            <div class="wordle"><input id="i-0" class="letter" maxlength="1"><input id="i-1" class="letter" maxlength="1"><input id="i-2" class="letter" maxlength="1"><input id="i-3" class="letter" maxlength="1"><input id="i-4" class="letter" maxlength="1"></div>
+            <div class="buttons">
+                <button id="done">Calculate</button>
+                <button id="paste">Paste</button>
+                <button id="reset">Reset</button>
+            </div>
+            <p id="future"></p>
+        </div>
+    </body>
+
+    <style>
+        .main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+        #done, #paste {
+            margin-right: 5px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 15px;
+        }
+        p {
+            word-break: break-all;
+        }
+
+    </style>
+</html>
