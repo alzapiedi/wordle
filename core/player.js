@@ -1,5 +1,6 @@
-import Wordle from './Game.js'
-import { buildWordValueMap } from '../utils/dictionary.js'
+import WordGraph from './graph.js'
+import { buildWordValueMap, buildWordGraphValueMap } from '../utils/dictionary.js'
+import letters from '../words/letters.js'
 
 const ns = (from) => new Set(from)
 
@@ -7,9 +8,8 @@ const DEFAULT_STARTING_WORDS = []
 
 export default class Player {
     constructor({ dictionary, firstWord, startingWords } = {}) {
-        const map = buildWordValueMap(dictionary)
-        const byWordScore = (a,b) => map[b] - map[a]
-        this.dictionary = dictionary.sort(byWordScore)
+        this.valuesMap = buildWordValueMap(dictionary)
+        this.dictionary = dictionary.sort(this.byWordScore)
         this.initialize(firstWord, startingWords)
     }
 
@@ -26,11 +26,17 @@ export default class Player {
     }
 
     getGuess() {
-        if (this.guessed.size < this.startingWords.length)
+        if (this.guessed.size < this.startingWords.length && this.wordList.length > 90 && this.knownsCount() < 2) {
             return this.startingWords[this.guessed.size]
+        }
+
+        if (this.guessed.size === 0) {
+            return this.getRandomTopWord()
+        }
 
         this.wordList = this.getMatches()
-        const word = this.chooseWord()
+
+        const word = (this.wordList.length > 50) ? this.chooseUnknown() : this.chooseWord()
 
         return word
     }
@@ -46,10 +52,10 @@ export default class Player {
             const letter = this.guess[idx]
             if (value === 2) {
                 this.knowns[idx] = letter
-                this.includes.delete(letter)
+                if (!score.some((value2,idx2) => value2 === 1 && this.guess[idx2] === letter)) this.includes.delete(letter)
             }
-            if (value === 1) // NEEDS WORK!! SHOULD NOT BE ADDING LETTER BACK TO INCLUDES IN ALL CASES
-                this.includes.add(letter)
+            if (value === 1)
+                if (this.knowns.indexOf(letter) === -1)this.includes.add(letter)
                 this.excludesByIndex[idx].add(letter)
 
             if (value === 0 && !this.includes.has(letter))
@@ -79,7 +85,7 @@ export default class Player {
                 return false
 
 
-            seen.add(word[i])
+            if (!known) seen.add(word[i])
         }
         return [...this.includes].every(i => seen.has(i))
 
@@ -90,38 +96,41 @@ export default class Player {
     }
 
     chooseWord() {
-        if (this.guessed.size === 0) return this.getRandomTopWord()
-        if (this.wordList.length > 300) return this.wordList[0]
         if (this.wordList.length === 0) return this.dictionary[Math.floor(Math.random() * this.dictionary.length)]
+        if (this.wordList.length === 1) return this.wordList[0]
 
-        const values = buildWordValueMap(this.wordList)
-        const byValue = (a,b) => values[b] - values[a]
-        this.wordList = this.wordList.sort(byValue)
+        const graph = new WordGraph(this.wordList)
+        this.graph = graph
 
-        let min = +Infinity
-        let bestWord
-        const map = {}
-        for (const word of this.wordList) {
-            map[word] = 0
-            for (const otherWord of this.wordList) {
-                if (word === otherWord) continue
-                const game = new Wordle({ word: otherWord, dictionary: this.wordList })
-                const player = this.clone()
-                const score = game.playWord(word)
-                player.makeGuess(word)
-                player.processScore(score)
-                const matches = player.getMatches()
-                map[word] += matches.length
-            }
-            if (map[word] < min) {
-                min = map[word]
-                bestWord = word
+        this.valuesMap = buildWordGraphValueMap(graph)
+
+        this.wordList = this.wordList.sort(this.byWordScore)
+        const similars = this.wordList.filter(w => this.valuesMap[w] >= (this.valuesMap[this.wordList[0]] - 0.08*this.valuesMap[this.wordList[0]]))
+
+        if (similars.length > 2 && this.guessed.size+this.wordList.length > 6) {
+            const similarityRanking = [0,1,2,3,4].reduce((s, i) => s+=similars.every(w=>w[i]===similars[0][i])?1:0,0)
+            if (similarityRanking >= 3) {
+                return this.findWordSpecial(similars)
             }
         }
     
-        return bestWord || this.wordList[0]
+        return this.wordList[0]
     }
 
+    chooseUnknown() {
+        const unknownLetters = new Set(
+            letters.filter(l => !(this.includes.has(l) || this.excludes.has(l) || this.knowns.indexOf(l) > -1))
+        )
+
+        const unknownWords = this.dictionary.filter(word => [...word].every(l=> unknownLetters.has(l)))
+
+        unknownWords.sort(this.byWordScore)
+        return unknownWords[0] || this.chooseWord()
+    }
+
+    byWordScore = (a,b) => this.valuesMap[b] - this.valuesMap[a]
+
+    knownsCount = () => this.knowns.filter(Boolean).length
 
     getRandomTopWord() {
         const i = Math.floor(Math.random()*100)
@@ -133,17 +142,20 @@ export default class Player {
         this.initialize(firstWord, startingWords)
     }
 
-    clone() {
-        const { dictionary, firstWord, wordList, guessed, includes, excludes, excludesByIndex, knowns } = this
-        const player = new Player({ dictionary: [], firstWord })
-        player.dictionary = dictionary // this could be dangerous some day but it saves a lot of time
-        player.wordList = [...wordList]
-        player.guessed = ns(guessed)
-        player.includes = ns(includes)
-        player.excludes = ns(excludes)
-        player.excludesByIndex = excludesByIndex.map(ns)
-        player.knowns = [...knowns]
+    findWordSpecial(list) {
+        const uniqueIdx = [0,1,2,3,4].filter(i => !list.every(w => w[i]===list[0][i]))
 
-        return player
+        const characters = list.reduce((s, word) => {
+            for (const i of uniqueIdx) {
+                s.push(word[i])
+            }
+            return s
+        }, [])
+        
+        return this.dictionary.sort((a,b) => {
+            const getBonus = word => characters.filter(c => word.indexOf(c) > -1).length
+            const getMinus = word => [...word].reduce((s, c) => s+=(this.includes.has(c) || this.excludes.has(c) || this.knowns.indexOf(c) > -1)?-1:0, 0)
+            return (getBonus(b) + getMinus(b)) - (getBonus(a) + getMinus(a))
+        })[0] || this.wordList[0]
     }
 }

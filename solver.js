@@ -12,7 +12,6 @@ let history, future
 const letters = [null,null,null,null,null]
 let words = []
 let scores = []
-window.gameData = { words, scores }
 
 function init() {
     $(document).on('paste', () => paste())

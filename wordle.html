@@ -5,6 +5,7 @@
         <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
         <script src="dist/wordle.js"></script>
         <link rel="stylesheet" type="text/css" href="wordle.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
 
     <body>
@@ -46,12 +47,12 @@
                     <button id="m" class="key">M</button>
                     <button id="backspace" class="key backspace">&lt;</button>
                 </div>
-                <p id="solution"></p>
-                <div class="buttons">
-                    <button id="reset">Reset</button>
-                </div>
-                <div id="error"></div>
             </div>
+            <p id="solution"></p>
+            <div class="buttons">
+                <button id="reset">Reset</button>
+            </div>
+            <div id="error"></div>
         </div>
     </body>
 
@@ -64,6 +65,12 @@
         }
         #done, #paste {
             margin-right: 5px;
+        }
+
+        @media (max-width: 640px) {
+            .main {
+                height: 100%;
+            }
         }
     </style>
 </html>

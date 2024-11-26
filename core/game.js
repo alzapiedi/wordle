@@ -37,7 +37,7 @@ export default class Wordle {
         return this.getScore(word)
     }
 
-    getScore(word) {
+    getScore = word => {
         word = word.trim().toLowerCase()
         const score = []
         const correctCounts = {}
