@@ -1,4 +1,4 @@
-# dist/
+dist/
 dump/
 node_modules/
 sandbox.js

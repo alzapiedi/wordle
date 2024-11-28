@@ -7,72 +7,72 @@ import $ from 'jquery'
 document.addEventListener('DOMContentLoaded', init)
 const player = new Player({ dictionary:common })
 window.player = player
+
 let history, future
-let allowScoring = false
 const letters = [null,null,null,null,null]
+let words = []
+let scores = []
+window.gameData = { words, scores }
 
 function init() {
     $(document).on('paste', () => paste())
     $('#paste').on('click', () => paste())
-    $('#done').on('click', () => calculate())
+    $('#remove').on('click', () => removeHistory())
     $('#reset').on('click', () => reset())
     history = $('#history')
     future = $('#future')
     loopLetters(initLetter)
-    letters[0].trigger('focus')
+    
+    initInputHandlers()
 }
+
+function initInputHandlers() {
+    $(document).on('keydown', (event) => {
+        if (event.ctrlKey) return
+        event.preventDefault()
+        if (event.key === 'Backspace') return backspace()
+        if (isLetter(event.key)) return input(event.key)
+    })
+}
+
 
 function initLetter(letterInput, i) {
     letters[i] = letterInput
-    const prevInput = i > 0 && $(`#i-${i-1}`)
-    const nextInput = i < 4 && $(`#i-${i+1}`)
-    letterInput.on('click', () => {
-        if (!allowScoring) return;
-        toggleScore(letterInput)
-    })
-    letterInput.on('keydown', (event) => {
-        event.preventDefault()
-        if (allowScoring) return
-        if (event.key === 'Backspace') {
-            if (!letterInput.val()) {
-                if (prevInput) {
-                    prevInput.val('')
-                    prevInput.trigger('focus')
-                }
-            }
-            letterInput.val('')
-            i < 4 && prevInput && prevInput.trigger('focus')
-        } else if (isLetter(event.key)) {
-            letterInput.val(event.key.toUpperCase())
-            nextInput && nextInput.trigger('focus')
-        }
+}
 
-        setAllowScoring(isWordComplete())
-    })
+function input(letter) {
+    const letterInput = letters[currentLetter()]
+    letterInput.val(letter.toUpperCase())
+
+    if (isWordComplete()) submit()
 }
 
 function resetLetter(letterInput) {
     letterInput.val('')
-    letterInput.removeClass('score')
-    ;[0,1,2].forEach(i => letterInput.removeClass(`score-${i}`))
+    letterInput.removeClass(['score', 'score-0', 'score-1','score-2'])
+    letterInput.off('click')
 }
 
-function calculate() {
+function currentLetter() {
+    const idx = letters.findIndex(l => !l.val() || !l.val().length)
+    return idx < 0 ? 4 : idx;
+}
+
+function submit() {
     const { word, score } = getParams()
-    player.makeGuess(word)
-    player.processScore(score)
-    player.updateWordList()
-    future.text(player.wordList.join(','))
     updateHistory(word, score)
     loopLetters(resetLetter)
-    setAllowScoring(false)
-    letters[0].trigger('focus')
+    updateGuesses()
 }
 
 function getParams() {
-    const word = letters.map(l=>l.val()).join('').toLowerCase()
+    const word = getWord()
     const score = letters.map(getScore)
     return { word, score }
+}
+
+function getWord() {
+    return letters.map(l=>l.val()).join('').toLowerCase()
 }
 
 function updateHistory(newWord, score) {
@@ -80,9 +80,27 @@ function updateHistory(newWord, score) {
     for (let i = 0; i < newWord.length; i++) {
         const letter = newWord[i]
         const value = score[i]
-        container.append($('<input>', { readonly: true, class: 'letter score score-'+value, value: letter.toUpperCase(), maxlength: 1}))
+        const letterInput = $('<input>', { readonly: true, class: 'letter score score-'+value, value: letter.toUpperCase(), maxlength: 1})
+        $(letterInput).on('click', () => handleScoreChange(letterInput, newWord, i))
+        container.append(letterInput)
     }
     history.append(container)
+    words.push(newWord)
+    scores.push(score)
+}
+
+function removeHistory() {
+    words.pop()
+    scores.pop()
+    history.children().last().remove()
+    updateGuesses()
+}
+
+function handleScoreChange(letterInput, newWord, i) {
+    const newScore = toggleScore(letterInput)
+    const row = words.findIndex(w => w === newWord)
+    scores[row][i] = newScore
+    updateGuesses()
 }
 
 function reset() {
@@ -90,8 +108,8 @@ function reset() {
     history.text('')
     future.text('')
     loopLetters(resetLetter)
-    letters[0].trigger('focus')
-    setAllowScoring(false)
+    words = []
+    scores = []
 }
 
 function paste() {
@@ -142,22 +160,37 @@ function changeScore(input, newScore) {
 function toggleScore(input) {
     const score = getNextScore(input)
     changeScore(input, score)
+    return score
 }
 
 function fillWord(word) {
     loopLetters((letter, i) => {
         letter.val(word[i].toUpperCase())
     })
-    setAllowScoring(true)
+    submit()
 }
 
-function setAllowScoring(flag) {
-    allowScoring = flag
-    window.allowScoring = allowScoring
-    if (allowScoring) {
-        loopLetters(letter => {
-            letter.addClass('score')
-            letter.addClass('score-0')
-        })
+function backspace() {
+    const c = currentLetter()
+    const prevInput = c > 0 && $(`#i-${c-1}`)
+    const letterInput = letters[c]
+    if (!letterInput.val()) {
+        if (prevInput) {
+            prevInput.val('')
+        }
     }
+    letterInput.val('')
+}
+
+function updateGuesses() {
+    player.reset()
+    for (const i in words) {
+        player.makeGuess(words[i])
+        player.processScore(scores[i])
+    }
+    const wordList = player.updateWordList()
+    const choice = player.getGuess()
+
+    if (wordList.length > 0 && words.length > 0) future.html(`<strong>${choice}</strong> `+wordList.filter(w=>w!==choice).join(','))
+    else future.text('')
 }
